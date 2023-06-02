@@ -1,10 +1,5 @@
-/*
-
-../../game/index.html
-
-https://www.youtube.com
-
-*/
+import { Rectangle } from "./objects/rectangle.js";
+import type { pos } from "./interfaces/object";
 
 export default class Commet {
 
@@ -18,6 +13,7 @@ export default class Commet {
     private vertexBuffer: any = null;
     private vertexNumComponents: any = null;
     private vertexCount: any = null;
+    private objects: number[][] = [];
 
     private aVertexPosition: any = null;
 
@@ -36,6 +32,7 @@ export default class Commet {
 
     constructor(cv: HTMLCanvasElement) {
         this.cv = cv;
+        this.aspectRatio = this.cv.width / this.cv.height;
         const gl = cv.getContext("webgl2") as WebGL2RenderingContext
         this.gl = gl;
         if(gl == null) {
@@ -47,6 +44,7 @@ export default class Commet {
     public get _gl() {
         return this.gl
     }
+
 
 
     public startup() {
@@ -64,7 +62,6 @@ export default class Commet {
         ];
 
         this.shaderProgram = this.buildShaderProgram(shaderSet);
-        this.aspectRatio = this.cv.width / this.cv.height;
         this.currentRotation = [0, 1];
         this.currentScale = [0.5, this.aspectRatio/2];
         this.currentAngle = 0.0;
@@ -122,6 +119,26 @@ export default class Commet {
         return shader;
     } 
 
+    public createRectangle(width: number, height: number, pos: pos = {x: 0, y: 0}, rotation: number = 0): Rectangle {
+
+        const rect = new Rectangle(width, height, pos, rotation)
+
+        const points =  [[-width, -height],[width, -height],[width, height],[-width, height]]
+
+        for(let point of points) {
+            point[0] += pos.x
+            point[1] += pos.y
+        }
+
+        const triangle1 = points[0].concat(points[2]).concat(points[3])
+        const triangle2 = points[0].concat(points[2]).concat(points[1])
+
+        this.drawObject(triangle1.concat(triangle2))
+
+        
+        return rect
+    }
+
     buildShaderProgram(shaderInfo: any) {
         const program = this.gl.createProgram() as WebGLProgram
 
@@ -155,6 +172,10 @@ export default class Commet {
 
     }
 
+    public drawObject(array: number[]) {
+        this.objects.push(array)
+    }
+
     animateScene() {
 
         this.gl.viewport(0, 0, this.cv.width, this.cv.height);
@@ -171,34 +192,12 @@ export default class Commet {
 
         this.gl.useProgram(this.shaderProgram);
 
-        this.setVertexPosition([
-            -0.5, 
-            0.5,
-            0.7 ,
-            0.7,
-            -0.7,
-            -0.7,
-            0.5, 
-            -0.5, 
-            0.7, 
-            0.7, 
-            -0.7, 
-            -0.7
-        ])
+        this.objects.forEach(vertecies => {
+            this.setVertexPosition(vertecies)
+            this.gl.drawArrays(this.gl.TRIANGLES, 0, this.vertexCount);
+        })
 
-        this.gl.drawArrays(this.gl.TRIANGLES, 0, this.vertexCount);
 
-        this.setVertexPosition([
-
-            -0.5 + 1.4, 
-            0.5,
-            0.7  + 1.4,
-            0.7,
-            -0.7 + 1.4,
-            -0.7,
-        ])
-
-        this.gl.drawArrays(this.gl.TRIANGLES, 0, this.vertexCount);
 
         requestAnimationFrame((currentTime) => {
             const deltaAngle =
